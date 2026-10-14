@@ -1,4 +1,4 @@
-# One Gate Community
+## One Gate Community
 
 A multilingual neighbourhood platform for community notices, complaints, polls, activities, and resident participation.
 
