@@ -1,0 +1,6 @@
+{
+  "name": "Community",
+  "description": "A multilingual community civic feedback and local governance platform with live notices, transparent complaint tracking, WhatsApp neighbor invites, and community activity planner available in English, Hindi, and Telugu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
