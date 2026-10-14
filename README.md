@@ -17,6 +17,14 @@ npm run dev
 
 Vite prints the local development URL in the terminal.
 
+## Deploy on Vercel
+
+1. Import `https://github.com/vamsi77940/EDP` as a project in Vercel. Vercel detects Vite and uses `npm run build` with `dist` as the output directory.
+2. In the Vercel project settings, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the environments you use. Use the Supabase publishable key only; never add a service-role key.
+3. Run the Supabase migration below **before** using the deployed app, then redeploy after setting the environment variables.
+
+`vercel.json` configures the SPA fallback so shared notice, complaint, and event links open correctly.
+
 ## Accounts and roles
 
 Create an account in the app. New accounts receive the `citizen` role and must confirm their email if email confirmation is enabled in Supabase Auth. After creating your own account, promote it to developer in the Supabase SQL Editor:
