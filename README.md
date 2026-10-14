@@ -1,24 +1,21 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# One Gate Community
 
-# EDP
+A multilingual neighbourhood platform for community notices, complaints, polls, activities, and resident participation.
 
-Engineering design project.
+## Get started
 
-# Run and deploy your AI Studio app
+**Requirements:** Node.js and npm
 
-This contains everything you need to run your app locally.
+```bash
+npm install
+npm run dev
+```
 
-View your app in AI Studio: https://ai.studio/apps/d383420d-9f9a-47f5-9245-3d11b9c02e95
+Vite prints the local development URL in the terminal.
 
-## Run Locally
+## Available commands
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- `npm run dev` — start the development server
+- `npm run build` — create a production build in `dist/`
+- `npm run preview` — preview the production build locally
+- `npm run lint` — run the TypeScript check
