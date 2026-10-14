@@ -457,7 +457,7 @@ export const UI_STRINGS: Record<Language, Record<string, string>> = {
     // Roles & Accessibility
     roleCitizen: 'Citizen View (Mobile/Web)',
     roleOfficer: 'Officer Panel (Field/AE)',
-    roleAdmin: 'Admin Panel (Ward Exec)',
+    roleAdmin: 'Developer',
     seniorCitizenMode: 'Senior Citizen Mode (Large Text & Easy UI)',
     accessibilityActive: 'Accessible UI Enabled',
     tabPolls: 'Citizen Polls',

@@ -946,7 +946,7 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     id: 'log-102',
     timestamp: '2026-09-06 01:15 PM',
     actor: 'Ward Admin (Commissioner Office)',
-    actorRole: 'admin',
+    actorRole: 'developer',
     action: 'PUBLISH_NOTIFICATIONS_PUSH',
     action_hi: 'सूचना प्रकाशित: मोबाइल पुश नोटिफिकेशन',
     action_te: 'నోటిఫికేషన్ ప్రచురణ: మొబైల్ పుష్ నోటిఫికేషన్',
@@ -1007,4 +1007,3 @@ export const INITIAL_WARD_KPIS: WardKPIs = {
   citizenSatisfactionRating: 4.7,
   activeOfficersCount: 48,
 };
-

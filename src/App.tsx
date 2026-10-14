@@ -15,13 +15,7 @@ import {
   UserRole,
   Poll
 } from './types';
-import { 
-  INITIAL_COMPLAINTS, 
-  INITIAL_NOTICES, 
-  INITIAL_ACTIVITIES, 
-  INITIAL_POLLS,
-  getLocalizedText 
-} from './data/mockData';
+import { getLocalizedText } from './data/mockData';
 import { Header } from './components/Header';
 import { NoticeBoardView } from './components/NoticeBoardView';
 import { ComplaintsView } from './components/ComplaintsView';
@@ -32,8 +26,131 @@ import { OfficerPanel } from './components/OfficerPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { PollsView } from './components/PollsView';
 import { t } from './translations';
+import { AuthScreen } from './components/AuthScreen';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
+import {
+  addComplaintComment,
+  addActivityChatMessage,
+  castPollVote,
+  CommunityData,
+  CommunityRole,
+  createCommunityRecord,
+  getCommunityRole,
+  loadCommunityData,
+  seedCommunityData,
+  toggleComplaintEndorsement,
+  toggleActivityRsvp,
+  updateCommunityRecord,
+  volunteerForActivity,
+} from './lib/communityData';
+import type { Session, User } from '@supabase/supabase-js';
 
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState<CommunityRole | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [authError, setAuthError] = useState('');
+
+  useEffect(() => {
+    if (!supabase) {
+      setIsInitializing(false);
+      return;
+    }
+
+    let isActive = true;
+    const loadRole = async (user: User) => {
+      try {
+        const userRole = await getCommunityRole(user.id);
+        if (isActive) {
+          setRole(userRole);
+          setAuthError('');
+          setIsInitializing(false);
+        }
+      } catch (error) {
+        console.error('Could not load the signed-in user role.', error);
+        if (isActive) {
+          setAuthError(error instanceof Error ? error.message : 'Could not load your account role.');
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!isActive) return;
+      if (error) {
+        setAuthError(error.message);
+        setIsInitializing(false);
+        return;
+      }
+      setSession(data.session);
+      if (data.session) void loadRole(data.session.user);
+      else setIsInitializing(false);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setRole(null);
+      setAuthError('');
+      if (nextSession) void loadRole(nextSession.user);
+      else setIsInitializing(false);
+    });
+
+    return () => {
+      isActive = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (!isSupabaseConfigured) {
+    return (
+      <main className="min-h-screen bg-slate-50 p-6 text-slate-800">
+        <section className="mx-auto mt-20 max-w-xl rounded-2xl border border-amber-200 bg-white p-6 shadow">
+          <h1 className="text-xl font-bold">Connect Supabase to continue</h1>
+          <p className="mt-3 text-sm leading-6">
+            Copy <code>.env.example</code> to <code>.env.local</code>, add your Supabase project URL and publishable key, then run <code>npm run dev</code> again.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (isInitializing) {
+    return <div className="flex min-h-screen items-center justify-center text-slate-600">Loading your account…</div>;
+  }
+
+  if (authError) {
+    return (
+      <main className="min-h-screen bg-slate-50 p-6">
+        <section className="mx-auto mt-20 max-w-xl rounded-2xl border border-rose-200 bg-white p-6 shadow">
+          <h1 className="text-xl font-bold text-rose-800">Could not load your account</h1>
+          <p className="mt-3 text-sm text-slate-700">{authError}</p>
+          <button className="mt-5 font-semibold text-amber-800" onClick={() => void supabase?.auth.signOut()} type="button">
+            Sign out
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!session) return <AuthScreen />;
+  if (!role) return <div className="flex min-h-screen items-center justify-center text-slate-600">Loading your role…</div>;
+
+  return (
+    <WorkspaceApp
+      onSignOut={() => supabase?.auth.signOut()}
+      role={role}
+      user={session.user}
+    />
+  );
+}
+
+interface WorkspaceAppProps {
+  role: UserRole;
+  user: User;
+  onSignOut: () => void | Promise<unknown>;
+}
+
+function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
   // Multilingual State (English, Hindi, Telugu) Preserved
   const [language, setLanguage] = useState<Language>(() => {
     try {
@@ -53,88 +170,16 @@ export default function App() {
     }
   }, [language]);
 
-  // Role Switcher State: Citizen | Officer | Admin
-  const [activeRole, setActiveRole] = useState<UserRole>('citizen');
+  const activeRole = role;
 
   // Senior Citizen / High Accessibility Mode State
   const [seniorCitizenMode, setSeniorCitizenMode] = useState<boolean>(false);
 
-  // Complaints State
-  const [complaints, setComplaints] = useState<Complaint[]>(() => {
-    try {
-      const saved = localStorage.getItem('community_civic_complaints_v4');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Could not load complaints from storage', e);
-    }
-    return INITIAL_COMPLAINTS;
-  });
-
-  // Notices State
-  const [notices, setNotices] = useState<LocalNotice[]>(() => {
-    try {
-      const saved = localStorage.getItem('community_civic_notices_v4');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Could not load notices from storage', e);
-    }
-    return INITIAL_NOTICES;
-  });
-
-  // Fun Activities State
-  const [activities, setActivities] = useState<FunActivity[]>(() => {
-    try {
-      const saved = localStorage.getItem('community_civic_activities_v4');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Could not load activities from storage', e);
-    }
-    return INITIAL_ACTIVITIES;
-  });
-
-  // Citizen Polls State
-  const [polls, setPolls] = useState<Poll[]>(() => {
-    try {
-      const saved = localStorage.getItem('community_civic_polls_v4');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Could not load polls from storage', e);
-    }
-    return INITIAL_POLLS;
-  });
-
-  // Sync to LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('community_civic_complaints_v4', JSON.stringify(complaints));
-    } catch (e) {
-      console.warn(e);
-    }
-  }, [complaints]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('community_civic_notices_v4', JSON.stringify(notices));
-    } catch (e) {
-      console.warn(e);
-    }
-  }, [notices]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('community_civic_activities_v4', JSON.stringify(activities));
-    } catch (e) {
-      console.warn(e);
-    }
-  }, [activities]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('community_civic_polls_v4', JSON.stringify(polls));
-    } catch (e) {
-      console.warn(e);
-    }
-  }, [polls]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [notices, setNotices] = useState<LocalNotice[]>([]);
+  const [activities, setActivities] = useState<FunActivity[]>([]);
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Tab & Area Navigation State
   const [activeTab, setActiveTab] = useState<'notices' | 'complaints' | 'polls' | 'activities' | 'invite'>('activities');
@@ -152,19 +197,53 @@ export default function App() {
     }, 4500);
   };
 
+  const applyCommunityData = (data: CommunityData) => {
+    setComplaints(data.complaints);
+    setNotices(data.notices);
+    setActivities(data.activities);
+    setPolls(data.polls);
+  };
+
+  const refreshCommunityData = async () => {
+    applyCommunityData(await loadCommunityData(user.id));
+  };
+
+  useEffect(() => {
+    let isActive = true;
+    const load = async () => {
+      try {
+        if (role === 'developer') await seedCommunityData(user);
+        const data = await loadCommunityData(user.id);
+        if (isActive) applyCommunityData(data);
+      } catch (error) {
+        console.error('Could not load community data from Supabase.', error);
+        if (isActive) showToast(error instanceof Error ? error.message : 'Could not load community data.');
+      } finally {
+        if (isActive) setIsDataLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      isActive = false;
+    };
+  }, [role, user]);
+
+  const persistAction = async (action: () => Promise<void>) => {
+    try {
+      await action();
+      await refreshCommunityData();
+      return true;
+    } catch (error) {
+      console.error('Could not save community changes.', error);
+      showToast(error instanceof Error ? error.message : 'Could not save your change. Please try again.');
+      return false;
+    }
+  };
+
   // Complaint Upvote ("Affects My Galli Too")
-  const handleToggleUpvote = (id: string) => {
-    setComplaints((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const userUpvoted = !c.userUpvoted;
-          const upvotes = userUpvoted ? c.upvotes + 1 : Math.max(0, c.upvotes - 1);
-          return { ...c, userUpvoted, upvotes };
-        }
-        return c;
-      })
-    );
-    showToast(
+  const handleToggleUpvote = async (id: string) => {
+    const saved = await persistAction(() => toggleComplaintEndorsement(id));
+    if (saved) showToast(
       language === 'hi' 
         ? 'आपका समर्थन "हमारी गली भी प्रभावित" दर्ज किया गया!' 
         : language === 'te' 
@@ -174,28 +253,19 @@ export default function App() {
   };
 
   // Add Comment on Complaint
-  const handleAddComment = (
+  const handleAddComment = async (
     id: string,
     commentData: Omit<ComplaintComment, 'id' | 'timestamp'>
   ) => {
-    const newComment: ComplaintComment = {
-      id: `c-${Date.now()}`,
-      timestamp: 'Just now',
-      ...commentData,
-    };
-
-    setComplaints((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          return {
-            ...c,
-            comments: [newComment, ...c.comments],
-          };
-        }
-        return c;
+    const saved = await persistAction(() =>
+      addComplaintComment(id, user.id, user.email ?? 'Resident', {
+        authorLane: commentData.authorLane,
+        text: commentData.text,
+        text_hi: commentData.text_hi,
+        text_te: commentData.text_te,
       })
     );
-    showToast(
+    if (saved) showToast(
       language === 'hi' 
         ? 'आपकी टिप्पणी सार्वजनिक शिकायत रिकॉर्ड में जोड़ दी गई है।' 
         : language === 'te' 
@@ -205,26 +275,25 @@ export default function App() {
   };
 
   // Officer Update Status
-  const handleUpdateStatus = (id: string, newStatus: ComplaintStatus, notes?: string) => {
-    setComplaints((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          return {
-            ...c,
-            status: newStatus,
-            officialResolutionNotes: notes || c.officialResolutionNotes,
-            expectedResolution: newStatus === 'resolved' ? 'Paka Resolved Today' : c.expectedResolution,
-          };
-        }
-        return c;
-      })
-    );
-    showToast(`Status updated to: ${newStatus.toUpperCase()}`);
+  const handleUpdateStatus = async (id: string, newStatus: ComplaintStatus, notes?: string) => {
+    const complaint = complaints.find((item) => item.id === id);
+    if (!complaint) return;
+    const updated = {
+      ...complaint,
+      status: newStatus,
+      officialResolutionNotes: notes || complaint.officialResolutionNotes,
+      expectedResolution: newStatus === 'resolved' ? 'Paka Resolved Today' : complaint.expectedResolution,
+    };
+    const saved = await persistAction(() => updateCommunityRecord('complaint', id, updated));
+    if (saved) showToast(`Status updated to: ${newStatus.toUpperCase()}`);
   };
 
   // File New Complaint
-  const handleCreateComplaint = (newComplaint: Complaint) => {
-    setComplaints((prev) => [newComplaint, ...prev]);
+  const handleCreateComplaint = async (newComplaint: Complaint) => {
+    const saved = await persistAction(() =>
+      createCommunityRecord('complaint', newComplaint.id, newComplaint, user.id)
+    );
+    if (!saved) return;
     setActiveTab('complaints');
     showToast(
       language === 'hi'
@@ -236,8 +305,11 @@ export default function App() {
   };
 
   // Add New Notice
-  const handleAddNewNotice = (newNotice: LocalNotice) => {
-    setNotices((prev) => [newNotice, ...prev]);
+  const handleAddNewNotice = async (newNotice: LocalNotice) => {
+    const saved = await persistAction(() =>
+      createCommunityRecord('notice', newNotice.id, newNotice, user.id)
+    );
+    if (!saved) return;
     showToast(
       language === 'hi'
         ? 'नई नागरिक सूचना बोर्ड पर प्रकाशित कर दी गई है!'
@@ -248,106 +320,51 @@ export default function App() {
   };
 
   // Fun Activity RSVP Toggle
-  const handleToggleActivityRsvp = (activityId: string, familyCount: number) => {
-    setActivities((prev) =>
-      prev.map((act) => {
-        if (act.id === activityId) {
-          const userRsvp = !act.userRsvp;
-          let attendees = act.attendees;
-          if (userRsvp) {
-            attendees = [{ name: 'Aap aur Gharwale', lane: 'Your Galli', familyCount: familyCount || 3 }, ...attendees];
-          } else {
-            attendees = attendees.filter((a) => a.name !== 'Aap aur Gharwale');
-          }
-          return {
-            ...act,
-            userRsvp,
-            userGuests: userRsvp ? (familyCount || 3) : 0,
-            attendees,
-          };
-        }
-        return act;
-      })
+  const handleToggleActivityRsvp = async (activityId: string, familyCount: number) => {
+    const saved = await persistAction(() =>
+      toggleActivityRsvp(activityId, user.id, familyCount || 3)
     );
-    showToast('Your RSVP has been updated!');
+    if (saved) showToast('Your RSVP has been updated!');
   };
 
   // Volunteer Signup
-  const handleVolunteer = (activityId: string, roleName: string, volunteerName: string) => {
-    setActivities((prev) =>
-      prev.map((act) => {
-        if (act.id === activityId) {
-          const updatedRoles = act.volunteerRoles.map((r) => {
-            if (r.roleName === roleName) {
-              return {
-                ...r,
-                assignedVolunteers: [...r.assignedVolunteers, volunteerName],
-              };
-            }
-            return r;
-          });
-          return { ...act, volunteerRoles: updatedRoles };
-        }
-        return act;
-      })
+  const handleVolunteer = async (activityId: string, roleName: string, _volunteerName: string) => {
+    const saved = await persistAction(() =>
+      volunteerForActivity(activityId, user.id, roleName)
     );
-    showToast(`Shukriya / Dhanyavad ${volunteerName}! You are signed up for "${roleName}".`);
+    if (saved) showToast(`Shukriya / Dhanyavad! You are signed up for "${roleName}".`);
   };
 
   // Activity Chat Message
-  const handleAddActivityChat = (activityId: string, author: string, text: string) => {
-    const newMsg = {
-      id: `m-${Date.now()}`,
-      author,
-      text,
-      time: 'Just now',
-    };
-    setActivities((prev) =>
-      prev.map((act) => {
-        if (act.id === activityId) {
-          return { ...act, chatMessages: [...act.chatMessages, newMsg] };
-        }
-        return act;
-      })
+  const handleAddActivityChat = async (activityId: string, _author: string, text: string) => {
+    const saved = await persistAction(() =>
+      addActivityChatMessage(activityId, user.id, text)
     );
-    showToast('Message posted to the discussion wall!');
+    if (saved) showToast('Message posted to the discussion wall!');
   };
 
   // Propose Activity
-  const handleProposeActivity = (newAct: FunActivity) => {
-    setActivities((prev) => [newAct, ...prev]);
+  const handleProposeActivity = async (newAct: FunActivity) => {
+    const saved = await persistAction(() =>
+      createCommunityRecord('activity', newAct.id, newAct, user.id)
+    );
+    if (!saved) return;
     setActiveTab('activities');
     showToast('New community activity proposed! Neighbors can now RSVP and join.');
   };
 
   // Vote on Citizen Poll
-  const handleVoteOnPoll = (pollId: string, optionId: string) => {
-    setPolls((prev) =>
-      prev.map((p) => {
-        if (p.id === pollId) {
-          const updatedOptions = p.options.map((opt) => {
-            if (opt.id === optionId) {
-              return { ...opt, votes: opt.votes + 1 };
-            }
-            return opt;
-          });
-          return {
-            ...p,
-            totalVotes: p.totalVotes + 1,
-            userVotedOptionId: optionId,
-            options: updatedOptions,
-          };
-        }
-        return p;
-      })
-    );
-    showToast('Your vote has been cast successfully!');
+  const handleVoteOnPoll = async (pollId: string, optionId: string) => {
+    const saved = await persistAction(() => castPollVote(pollId, optionId));
+    if (saved) showToast('Your vote has been cast successfully!');
   };
 
   // Add Poll from Admin Panel
-  const handleAddPoll = (newPoll: Poll) => {
-    setPolls((prev) => [newPoll, ...prev]);
-    showToast('New Ward Poll Published!');
+  const handleAddPoll = async (newPoll: Poll) => {
+    const saved = await persistAction(() =>
+      createCommunityRecord('poll', newPoll.id, newPoll, user.id)
+    );
+    if (saved) showToast('New Ward Poll Published!');
   };
 
   // WhatsApp Share helpers (Localized)
@@ -408,7 +425,8 @@ export default function App() {
         openComplaintsCount={openComplaintsCount}
         upcomingEventsCount={activities.length}
         activeRole={activeRole}
-        setActiveRole={setActiveRole}
+        userEmail={user.email ?? ''}
+        onSignOut={onSignOut}
         language={language}
         setLanguage={setLanguage}
         seniorCitizenMode={seniorCitizenMode}
@@ -417,8 +435,11 @@ export default function App() {
 
       {/* Main Content Area based on Active Role */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full">
+        {isDataLoading && (
+          <div className="py-20 text-center font-semibold text-slate-500">Loading shared community data…</div>
+        )}
         {/* ROLE 1: CITIZEN VIEW */}
-        {activeRole === 'citizen' && (
+        {!isDataLoading && (activeRole === 'citizen' || activeRole === 'developer') && (
           <>
             {activeTab === 'notices' && (
               <NoticeBoardView
@@ -426,7 +447,7 @@ export default function App() {
                 selectedArea={selectedArea}
                 onShareNotice={handleShareNotice}
                 onAddNewNotice={handleAddNewNotice}
-                isStaffMode={false}
+                isStaffMode={activeRole === 'developer'}
                 language={language}
               />
             )}
@@ -483,7 +504,7 @@ export default function App() {
         )}
 
         {/* ROLE 3: ADMIN PANEL */}
-        {activeRole === 'admin' && (
+        {activeRole === 'developer' && (
           <AdminPanel
             language={language}
             selectedArea={selectedArea}
@@ -531,4 +552,3 @@ export default function App() {
     </div>
   );
 }
-

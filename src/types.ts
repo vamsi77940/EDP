@@ -55,7 +55,7 @@ export interface StatusStepConfig {
   description: string;
 }
 
-export type UserRole = 'citizen' | 'officer' | 'admin';
+export type UserRole = 'citizen' | 'officer' | 'developer';
 
 export interface AccessibilitySettings {
   seniorCitizenMode: boolean;
@@ -280,4 +280,3 @@ export interface WardKPIs {
   citizenSatisfactionRating: number;
   activeOfficersCount: number;
 }
-

@@ -106,7 +106,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       id: `log-${Date.now()}`,
       timestamp: 'Just now',
       actor: 'Ward Commissioner Admin',
-      actorRole: 'admin',
+      actorRole: 'developer',
       action: `BROADCAST_NOTIFICATION_${notifChannel.toUpperCase()}`,
       targetId: newNotif.id,
       targetType: 'system',

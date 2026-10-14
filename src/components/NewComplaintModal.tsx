@@ -125,8 +125,8 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
       expectedResolution_te: urgency === 'Tatkāl (Emergency)' ? '24 గంటల్లోగా' : '48 గంటల్లోగా',
       status: 'submitted',
       assignedOfficer: officer,
-      upvotes: 1,
-      userUpvoted: true,
+      upvotes: 0,
+      userUpvoted: false,
       comments: [],
     };
 
