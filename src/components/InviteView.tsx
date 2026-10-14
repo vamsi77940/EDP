@@ -36,6 +36,10 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
   const currentMessageText = isCustomMode 
     ? customMessage 
     : getTemplateMessage(activeTemplate, language);
+  const shareableMessage = currentMessageText.replaceAll(
+    'https://community-civic.app',
+    window.location.origin,
+  );
 
   const handleCopy = (text: string, id: string) => {
     if (navigator.clipboard) {
@@ -48,7 +52,7 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
 
   const handleWhatsAppSend = (text: string) => {
     const encoded = encodeURIComponent(text);
-    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
     onShowToast('Opening WhatsApp...');
   };
 
@@ -97,7 +101,7 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
                 setIsCustomMode(!isCustomMode);
                 if (!customMessage) {
                   setCustomMessage(
-                    `🇮🇳 *Namaste / Adaab!*\n\nPlease join our Community Civic Portal:\nhttps://community-civic.app/?circle=ward72`
+                    `🇮🇳 *Namaste / Adaab!*\n\nPlease join our One Gate community:\n${window.location.origin}/?circle=ward72`
                   );
                 }
               }}
@@ -171,7 +175,7 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
             {/* Mock WhatsApp Bubble */}
             <div className="bg-[#EFEAE2] p-4 sm:p-6 rounded-2xl border border-slate-200/80 max-w-lg mx-auto shadow-inner relative">
               <div className="bg-white p-4 rounded-2xl rounded-tl-xs shadow-xs text-xs text-slate-800 space-y-2 whitespace-pre-line font-sans leading-relaxed border border-slate-100">
-                {currentMessageText}
+                {shareableMessage}
               </div>
 
               <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400">
@@ -184,8 +188,8 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
             <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={() => handleCopy(currentMessageText, activeTemplate.id)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                onClick={() => handleCopy(shareableMessage, activeTemplate.id)}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-800 transition-colors hover:bg-slate-200 cursor-pointer sm:w-auto"
               >
                 {copiedId === activeTemplate.id ? (
                   <>
@@ -202,8 +206,8 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
 
               <button
                 type="button"
-                onClick={() => handleWhatsAppSend(currentMessageText)}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                onClick={() => handleWhatsAppSend(shareableMessage)}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer sm:w-auto"
               >
                 <Send className="w-4 h-4" />
                 <span>{t(language, 'sendWhatsAppBtn')}</span>
@@ -259,7 +263,7 @@ export const InviteView: React.FC<InviteViewProps> = ({ onShowToast, language })
               {t(language, 'scanToJoin')}
             </span>
             <span className="text-[10px] text-amber-700 font-mono mt-0.5">
-              https://community-civic.app/?ward=72
+              {window.location.origin}/?ward=72
             </span>
           </div>
 

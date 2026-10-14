@@ -22,7 +22,7 @@ interface NoticeBoardViewProps {
   notices: LocalNotice[];
   selectedArea: LocalArea;
   onShareNotice: (notice: LocalNotice) => void;
-  onAddNewNotice: (notice: LocalNotice) => void;
+  onAddNewNotice: (notice: LocalNotice) => Promise<boolean>;
   isStaffMode: boolean;
   language: Language;
 }
@@ -37,6 +37,7 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [newNoticeForm, setNewNoticeForm] = useState({
     title: '',
     title_hi: '',
@@ -80,15 +81,16 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
     return true;
   });
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoticeForm.title.trim() || !newNoticeForm.details.trim()) return;
 
-    onAddNewNotice({
+    const saved = await onAddNewNotice({
       id: `not-${Date.now()}`,
       ...newNoticeForm,
       status: 'Ongoing',
     });
+    if (!saved) return;
 
     setShowAddModal(false);
     setNewNoticeForm({
@@ -150,7 +152,7 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
       {/* Header & Context */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="px-2 py-0.5 text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-300 rounded-md">
               {getLocalizedText(currentAreaInfo, 'name', language)}
             </span>
@@ -172,7 +174,7 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
               type="button"
               id="publish-notice-btn"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer sm:w-auto"
             >
               <PlusCircle className="w-3.5 h-3.5 text-amber-400" />
               <span>{t(language, 'publishNoticeBtn')}</span>
@@ -191,7 +193,7 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
               key={cat.id}
               type="button"
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              className={`flex min-h-11 shrink-0 items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
                 isSelected
                   ? 'bg-amber-600 text-white font-bold shadow-xs'
                   : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -217,16 +219,16 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
             <div
               key={notice.id}
               id={`notice-card-${notice.id}`}
-              className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-amber-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs hover:border-amber-300 transition-all flex flex-col justify-between"
             >
               <div>
                 {/* Notice Top Bar */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <div className="p-2 rounded-xl bg-slate-100 shrink-0">
                       {getCategoryIcon(notice.category)}
                     </div>
-                    <span className="text-xs font-bold text-slate-700">
+                    <span className="break-words text-xs font-bold text-slate-700">
                       {displayCat}
                     </span>
                   </div>
@@ -254,12 +256,12 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
                   <div className="flex items-center gap-2 text-slate-700">
                     <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                     <span className="font-semibold text-slate-900">{t(language, 'areaLabelShort')}:</span>
-                    <span>{displayArea}</span>
+                    <span className="min-w-0 break-words">{displayArea}</span>
                   </div>
 
                   <div className="flex items-center gap-2 text-slate-600 text-[11px]">
                     <PhoneCall className="w-3 h-3 text-slate-400 shrink-0" />
-                    <span>{notice.contactPerson}</span>
+                    <span className="min-w-0 break-words">{notice.contactPerson}</span>
                   </div>
                 </div>
               </div>
@@ -274,7 +276,7 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onShareNotice(notice)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5" />
                   <span>{t(language, 'shareWhatsApp')}</span>
@@ -287,8 +289,8 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
 
       {/* Staff Add Notice Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-xl border border-slate-200 max-h-[calc(100dvh-1rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-amber-600" />
@@ -305,7 +307,10 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="mt-4 space-y-3.5 text-xs">
+            <form onSubmit={(event) => {
+              setIsSubmitting(true);
+              void handleAddSubmit(event).finally(() => setIsSubmitting(false));
+            }} className="mt-4 space-y-3.5 text-xs">
               <div>
                 <label className="font-semibold text-slate-800 block mb-1">
                   Notice Category
@@ -440,9 +445,10 @@ export const NoticeBoardView: React.FC<NoticeBoardViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="min-h-11 w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-60 sm:w-auto"
                 >
-                  {t(language, 'publishNoticeBtn')}
+                  {isSubmitting ? 'Publishing…' : t(language, 'publishNoticeBtn')}
                 </button>
               </div>
             </form>

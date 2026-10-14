@@ -26,7 +26,7 @@ interface ComplaintsViewProps {
   selectedArea: LocalArea;
   onOpenNewComplaint: () => void;
   onToggleUpvote: (id: string) => void;
-  onAddComment: (id: string, comment: Omit<ComplaintComment, 'id' | 'timestamp'>) => void;
+  onAddComment: (id: string, comment: Omit<ComplaintComment, 'id' | 'timestamp'>) => Promise<boolean>;
   onUpdateStatus?: (id: string, status: ComplaintStatus, notes?: string) => void;
   onShareComplaint: (complaint: Complaint) => void;
   isStaffMode: boolean;
@@ -77,17 +77,18 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
   const inField = complaints.filter((c) => c.status === 'field_work' || c.status === 'assigned').length;
   const resolvedCount = complaints.filter((c) => c.status === 'resolved').length;
 
-  const handleCommentSubmit = (complaintId: string, e: React.FormEvent) => {
+  const handleCommentSubmit = async (complaintId: string, e: React.FormEvent) => {
     e.preventDefault();
     const input = commentInputs[complaintId];
     if (!input || !input.text.trim()) return;
 
-    onAddComment(complaintId, {
+    const saved = await onAddComment(complaintId, {
       authorName: input.name.trim() || 'Resident',
       authorLane: input.lane.trim() || 'Local Lane',
       text: input.text.trim(),
       isOfficer: isStaffMode,
     });
+    if (!saved) return;
 
     setCommentInputs((prev) => ({
       ...prev,
@@ -175,7 +176,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner & Transparency KPI Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -195,7 +196,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
           <button
             type="button"
             onClick={onOpenNewComplaint}
-            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 self-start md:self-center cursor-pointer whitespace-nowrap"
+            className="min-h-11 w-full justify-center px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 self-start md:self-center cursor-pointer whitespace-nowrap sm:w-auto"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{t(language, 'lodgeComplaintBtn')}</span>
@@ -242,7 +243,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as any)}
-            className="p-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+            className="min-h-11 max-w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
           >
             <option value="all">{t(language, 'allCategories')}</option>
             {COMPLAINT_CATEGORIES.map((cat) => (
@@ -256,7 +257,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as any)}
-            className="p-1.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+            className="min-h-11 p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
           >
             <option value="all">{t(language, 'allStatuses')}</option>
             <option value="submitted">1. {t(language, 'step1')}</option>
@@ -311,12 +312,12 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
               <div
                 key={complaint.id}
                 id={`complaint-card-${complaint.id}`}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-slate-300 transition-all"
+                className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all"
               >
                 {/* Header Row: Ticket ID, Category & Urgency */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-extrabold px-2 py-0.5 rounded bg-slate-900 text-amber-400">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="break-all font-mono text-xs font-extrabold px-2 py-1 rounded bg-slate-900 text-amber-400">
                       {complaint.ticketNumber}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${categoryConfig?.colorClass || 'bg-slate-100 text-slate-800'}`}>
@@ -324,7 +325,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {getUrgencyBadge(complaint.urgency)}
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusConfig.badgeClass}`}>
                       {getLocalizedText(statusConfig, 'label', language)}
@@ -423,12 +424,12 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
 
                 {/* Resident Action Bar: Upvote ("Affects My Galli"), Comment & WhatsApp */}
                 <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {/* Upvote Button */}
                     <button
                       type="button"
                       onClick={() => onToggleUpvote(complaint.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         complaint.userUpvoted
                           ? 'bg-amber-600 text-white shadow-xs'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -444,7 +445,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                       onClick={() =>
                         setExpandedCommentsId(isCommentsExpanded ? null : complaint.id)
                       }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                      className="inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       <span>{t(language, 'commentsBtn')} ({complaint.comments.length})</span>
@@ -460,7 +461,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onShareComplaint(complaint)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                   >
                     <Share2 className="w-3.5 h-3.5" />
                     <span>{t(language, 'shareWhatsApp')}</span>
@@ -515,13 +516,14 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
 
                     {/* Add Comment Form */}
                     <form
-                      onSubmit={(e) => handleCommentSubmit(complaint.id, e)}
+                      onSubmit={(e) => void handleCommentSubmit(complaint.id, e)}
                       className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs"
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                           type="text"
                           required
+                          autoComplete="name"
                           value={commentInput.name}
                           onChange={(e) =>
                             setCommentInputs({
@@ -533,7 +535,7 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                             })
                           }
                           placeholder={t(language, 'commentNamePlaceholder')}
-                          className="p-2 border border-slate-200 rounded-lg bg-white text-slate-900"
+                          className="min-h-11 min-w-0 p-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-900"
                         />
                         <input
                           type="text"
@@ -549,11 +551,11 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                             })
                           }
                           placeholder={t(language, 'commentLanePlaceholder')}
-                          className="p-2 border border-slate-200 rounded-lg bg-white text-slate-900"
+                          className="min-h-11 min-w-0 p-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-900"
                         />
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <input
                           type="text"
                           required
@@ -568,11 +570,11 @@ export const ComplaintsView: React.FC<ComplaintsViewProps> = ({
                             })
                           }
                           placeholder={t(language, 'commentTextPlaceholder')}
-                          className="flex-1 p-2 border border-slate-200 rounded-lg bg-white text-slate-900"
+                          className="min-h-11 min-w-0 flex-1 p-2 border border-slate-200 rounded-lg bg-white text-sm text-slate-900"
                         />
                         <button
                           type="submit"
-                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                          className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-amber-600 px-4 py-2 font-bold text-white transition-colors cursor-pointer"
                         >
                           <Send className="w-3.5 h-3.5" />
                           <span>{t(language, 'postCommentBtn')}</span>

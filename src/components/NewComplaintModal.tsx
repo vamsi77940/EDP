@@ -15,7 +15,7 @@ import { t } from '../translations';
 interface NewComplaintModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (complaint: Complaint) => void;
+  onSubmit: (complaint: Complaint) => Promise<boolean>;
   defaultArea: LocalArea;
   language: Language;
 }
@@ -35,10 +35,11 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
   const [urgency, setUrgency] = useState<'Tatkāl (Emergency)' | 'Zaroori (Moderate)' | 'Routine'>('Zaroori (Moderate)');
   const [filedBy, setFiledBy] = useState('');
   const [filedPhone, setFiledPhone] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !filedBy.trim()) return;
 
@@ -130,13 +131,17 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
       comments: [],
     };
 
-    onSubmit(newComplaint);
-    onClose();
+    setIsSubmitting(true);
+    try {
+      if (await onSubmit(newComplaint)) onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 my-8">
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-xl w-full max-h-[calc(100dvh-1rem)] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-slate-200 my-2 sm:my-8">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -253,11 +258,11 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
             <label className="font-bold text-slate-800 block mb-1.5">
               {t(language, 'modalUrgency')}
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 min-[390px]:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setUrgency('Tatkāl (Emergency)')}
-                className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
+                className={`min-h-11 py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
                   urgency === 'Tatkāl (Emergency)'
                     ? 'bg-rose-100 text-rose-900 border-rose-400 ring-2 ring-rose-500/20'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -269,7 +274,7 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
               <button
                 type="button"
                 onClick={() => setUrgency('Zaroori (Moderate)')}
-                className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
+                className={`min-h-11 py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
                   urgency === 'Zaroori (Moderate)'
                     ? 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-500/20'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -281,7 +286,7 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
               <button
                 type="button"
                 onClick={() => setUrgency('Routine')}
-                className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
+                className={`min-h-11 py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
                   urgency === 'Routine'
                     ? 'bg-blue-100 text-blue-900 border-blue-400 ring-2 ring-blue-500/20'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -329,20 +334,21 @@ export const NewComplaintModal: React.FC<NewComplaintModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+              className="min-h-11 w-full px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors cursor-pointer sm:w-auto"
             >
               {t(language, 'modalCancel')}
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-xl font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={isSubmitting}
+              className="min-h-11 w-full justify-center px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-xl font-bold shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60 sm:w-auto"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{t(language, 'modalSubmit')}</span>
+              <span>{isSubmitting ? 'Submitting…' : t(language, 'modalSubmit')}</span>
             </button>
           </div>
         </form>

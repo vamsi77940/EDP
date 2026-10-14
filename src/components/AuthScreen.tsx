@@ -67,7 +67,7 @@ export const AuthScreen: React.FC = () => {
             Email
             <input
               autoComplete="email"
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 font-normal"
+              className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 py-2.5 font-normal"
               onChange={(event) => setEmail(event.target.value)}
               required
               type="email"
@@ -78,7 +78,7 @@ export const AuthScreen: React.FC = () => {
             Password
             <input
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 font-normal"
+              className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 px-3 py-2.5 font-normal"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
               required
@@ -101,7 +101,7 @@ export const AuthScreen: React.FC = () => {
         </form>
 
         <button
-          className="mt-5 w-full text-sm font-semibold text-amber-800 hover:underline"
+          className="mt-5 min-h-11 w-full text-sm font-semibold text-amber-800 hover:underline"
           onClick={() => {
             setIsSignUp(!isSignUp);
             setError('');

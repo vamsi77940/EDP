@@ -61,7 +61,7 @@ export const PollsView: React.FC<PollsViewProps> = ({
           return (
             <div
               key={poll.id}
-              className={`bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 ${
+              className={`bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4 ${
                 seniorCitizenMode ? 'text-base' : 'text-xs'
               }`}
             >
@@ -94,8 +94,7 @@ export const PollsView: React.FC<PollsViewProps> = ({
                   return (
                     <div
                       key={opt.id}
-                      onClick={() => !userVotedOpt && handleOptionSelect(poll.id, opt.id)}
-                      className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`flex min-h-12 flex-col justify-center p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
                         isVoted
                           ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-400'
                           : isSelected
@@ -104,7 +103,7 @@ export const PollsView: React.FC<PollsViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between font-bold text-slate-900">
-                        <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2">
                           <input
                             type="radio"
                             name={`poll-${poll.id}`}
@@ -114,7 +113,7 @@ export const PollsView: React.FC<PollsViewProps> = ({
                             className="w-4 h-4 text-purple-600 focus:ring-purple-500 cursor-pointer"
                           />
                           <span>{getLocalizedText(opt, 'text', language)}</span>
-                        </div>
+                        </label>
                         {userVotedOpt && (
                           <span className="text-purple-800 font-extrabold">{pct}%</span>
                         )}
@@ -137,7 +136,7 @@ export const PollsView: React.FC<PollsViewProps> = ({
                   type="button"
                   disabled={!selectedOptionByPoll[poll.id]}
                   onClick={() => handleCastVoteClick(poll.id)}
-                  className={`w-full py-3 rounded-xl font-extrabold shadow-md transition-all cursor-pointer ${
+                  className={`min-h-12 w-full py-3 rounded-xl font-extrabold shadow-md transition-all cursor-pointer ${
                     selectedOptionByPoll[poll.id]
                       ? 'bg-purple-600 hover:bg-purple-700 text-white'
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'

@@ -256,7 +256,7 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
   const handleAddComment = async (
     id: string,
     commentData: Omit<ComplaintComment, 'id' | 'timestamp'>
-  ) => {
+  ): Promise<boolean> => {
     const saved = await persistAction(() =>
       addComplaintComment(id, user.id, user.email ?? 'Resident', {
         authorLane: commentData.authorLane,
@@ -272,6 +272,7 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
         ? 'మీ వ్యాఖ్య ప్రజా ఫిర్యాదుల రికార్డుకు జోడించబడింది.' 
         : 'Your comment has been added to the public grievance record.'
     );
+    return saved;
   };
 
   // Officer Update Status
@@ -289,11 +290,11 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
   };
 
   // File New Complaint
-  const handleCreateComplaint = async (newComplaint: Complaint) => {
+  const handleCreateComplaint = async (newComplaint: Complaint): Promise<boolean> => {
     const saved = await persistAction(() =>
       createCommunityRecord('complaint', newComplaint.id, newComplaint, user.id)
     );
-    if (!saved) return;
+    if (!saved) return false;
     setActiveTab('complaints');
     showToast(
       language === 'hi'
@@ -302,14 +303,15 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
         ? `ఫిర్యాదు #${newComplaint.ticketNumber} నమోదైంది! అసిస్టెంట్ ఇంజనీర్‌కు హెచ్చరిక పంపబడింది.`
         : `Ticket #${newComplaint.ticketNumber} registered! Alert dispatched to Assistant Engineer.`
     );
+    return true;
   };
 
   // Add New Notice
-  const handleAddNewNotice = async (newNotice: LocalNotice) => {
+  const handleAddNewNotice = async (newNotice: LocalNotice): Promise<boolean> => {
     const saved = await persistAction(() =>
       createCommunityRecord('notice', newNotice.id, newNotice, user.id)
     );
-    if (!saved) return;
+    if (!saved) return false;
     showToast(
       language === 'hi'
         ? 'नई नागरिक सूचना बोर्ड पर प्रकाशित कर दी गई है!'
@@ -317,6 +319,7 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
         ? 'కొత్త పౌర సమాచారం నోటీసు బోర్డులో ప్రచురించబడింది!'
         : 'New civic notice published to the Community board!'
     );
+    return true;
   };
 
   // Fun Activity RSVP Toggle
@@ -344,13 +347,14 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
   };
 
   // Propose Activity
-  const handleProposeActivity = async (newAct: FunActivity) => {
+  const handleProposeActivity = async (newAct: FunActivity): Promise<boolean> => {
     const saved = await persistAction(() =>
       createCommunityRecord('activity', newAct.id, newAct, user.id)
     );
-    if (!saved) return;
+    if (!saved) return false;
     setActiveTab('activities');
     showToast('New community activity proposed! Neighbors can now RSVP and join.');
+    return true;
   };
 
   // Vote on Citizen Poll
@@ -371,28 +375,52 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
   const handleShareNotice = (notice: LocalNotice) => {
     const title = getLocalizedText(notice, 'title', language);
     const details = getLocalizedText(notice, 'details', language);
-    const text = `📢 *CIVIC NOTICE: ${title}*\n📍 *Locality:* ${notice.areaAffected}\n⏰ *Time:* ${notice.scheduledTime}\n📝 *Details:* ${details}\n📞 *Helpline:* ${notice.contactPerson}\n\n👉 Track live on Community Portal:\nhttps://community-civic.app/?notice=${notice.id}`;
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    const text = `📢 *COMMUNITY NOTICE: ${title}*\n📍 *Locality:* ${notice.areaAffected}\n⏰ *Time:* ${notice.scheduledTime}\n📝 *Details:* ${details}\n📞 *Contact:* ${notice.contactPerson}\n\n👉 View in One Gate:\n${window.location.origin}/?notice=${encodeURIComponent(notice.id)}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
   const handleShareComplaint = (complaint: Complaint) => {
     const title = getLocalizedText(complaint, 'title', language);
     const location = getLocalizedText(complaint, 'locationDetails', language);
-    const text = `📬 *GRIEVANCE ALERT #${complaint.ticketNumber}*\n*Subject:* ${title}\n📍 *Spot:* ${location}\n👷 *In-Charge:* ${complaint.assignedOfficer.name}\n⚡ *Status:* ${complaint.status.toUpperCase()}\n\n👉 Add your support on Community portal:\nhttps://community-civic.app/?ticket=${complaint.ticketNumber}`;
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    const text = `📬 *COMMUNITY REQUEST #${complaint.ticketNumber}*\n*Subject:* ${title}\n📍 *Location:* ${location}\n⚡ *Status:* ${complaint.status.toUpperCase()}\n\n👉 View in One Gate:\n${window.location.origin}/?ticket=${encodeURIComponent(complaint.ticketNumber)}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
   const handleShareActivity = (act: FunActivity) => {
     const title = getLocalizedText(act, 'title', language);
     const venue = getLocalizedText(act, 'venue', language);
-    const text = `🎉 *COMMUNITY INVITATION: ${title}*\n📅 *Date:* ${act.date} • ${act.time}\n📍 *Venue:* ${venue}\n\n👉 RSVP along with family:\nhttps://community-civic.app/?event=${act.id}`;
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    const text = `🎉 *COMMUNITY INVITATION: ${title}*\n📅 *Date:* ${act.date} • ${act.time}\n📍 *Venue:* ${venue}\n\n👉 RSVP with the community:\n${window.location.origin}/?event=${encodeURIComponent(act.id)}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
   const openComplaintsCount = complaints.filter((c) => c.status !== 'resolved').length;
+
+  useEffect(() => {
+    if (isDataLoading) return;
+    const params = new URLSearchParams(window.location.search);
+    const sharedNotice = params.get('notice');
+    const sharedTicket = params.get('ticket');
+    const sharedEvent = params.get('event');
+    const sharedComplaints = params.get('complaints');
+    const target = sharedNotice
+      ? { tab: 'notices' as const, id: `notice-card-${sharedNotice}` }
+      : sharedTicket
+        ? { tab: 'complaints' as const, id: `complaint-card-${complaints.find((item) => item.ticketNumber === sharedTicket)?.id ?? sharedTicket}` }
+        : sharedEvent
+          ? { tab: 'activities' as const, id: `activity-card-${sharedEvent}` }
+          : sharedComplaints
+            ? {
+                tab: 'complaints' as const,
+                id: `complaint-card-${complaints.find((item) => item.status !== 'resolved')?.id ?? ''}`,
+              }
+          : null;
+    if (!target) return;
+    setActiveTab(target.tab);
+    window.setTimeout(() => document.getElementById(target.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+  }, [isDataLoading, complaints]);
 
   return (
     <div className={`min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans transition-all ${
@@ -400,7 +428,7 @@ function WorkspaceApp({ role, user, onSignOut }: WorkspaceAppProps) {
     }`}>
       {/* Toast Notification Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-2xl border border-slate-800 flex items-center gap-3 text-xs sm:text-sm font-bold animate-in slide-in-from-bottom-5">
+        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-50 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3.5 text-xs font-bold text-white shadow-2xl animate-in slide-in-from-bottom-5 sm:bottom-6 sm:left-auto sm:right-6 sm:w-auto sm:px-5 sm:text-sm">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
           <button
